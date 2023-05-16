@@ -17,7 +17,7 @@ meta = {
 	'author': 'Saeed',
 	'version': '0.8',
 	'description': 'Search in open-sources to find relevant documents. filetypes[pdf,doc,docx,ppt,pptx,xlsx,txt,..].',
-	'sources': ('bing', 'google', 'yahoo', 'yandex', 'metacrawler', 'ask',
+	'sources': ('bing', 'google', 'yahoo', 'metacrawler', 'ask',
 		'startpage', 'exalead', 'carrot2', 'qwant', 'millionshort', 'duckduckgo', 'gigablast', 'dogpile'),
 	'options': (
 		('query', None, True, 'Host Name, Company Name, keyword, query, etc', '-q', 'store', str),
@@ -38,7 +38,6 @@ def search(self, name, q, q_formats, limit, count):
 	global DOCS
 	try:
 		engine = getattr(self, name)
-		name = engine.__init__.__name__
 		q = q
 		varnames = engine.__init__.__code__.co_varnames
 		if 'limit' in varnames and 'count' in varnames:

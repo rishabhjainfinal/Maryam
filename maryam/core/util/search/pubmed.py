@@ -15,66 +15,70 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import re
-import urllib.parse
-import html
+import lxml
 
 class main:
 
-		def __init__(self, q, limit=15):
-			""" pubmed.ncbi.nlm.nih.gov search engine
+	def __init__(self, q, count=15):
+		""" pubmed.ncbi.nlm.nih.gov search engine
 
-					q         : query for search
-					limit     : maximum result count
-			"""
-			self.framework = main.framework
-			self.q = q
-			self.max = limit
-			self._rawhtml = ''
-			self._articles = []
-			self._links = []
-			self._links_with_data = []
-			self.pubmed = 'https://pubmed.ncbi.nlm.nih.gov'
+				q         : query for search
+				count     : maximum result count
+		"""
+		self.framework = main.framework
+		self.q = q
+		self.max = count
+		self._rawhtml = ''
+		self._results = []
+		self.pubmed = 'https://pubmed.ncbi.nlm.nih.gov'
+		self.xpath_names = {
+			'results': './/article',
+			'results_content':'.//div[@class="full-view-snippet"]',
+			'results_title':'.//a[@class="docsum-title"]',
+			'results_a': './/a[@class="docsum-title"]',
+			'results_cite': './/span[@class="docsum-authors full-authors"]'
+		}
+		self.xpaths = {
+			self.xpath_names['results']: [
+				self.xpath_names['results_content'],
+				self.xpath_names['results_title'],
+				self.xpath_names['results_a'],
+				self.xpath_names['results_cite']
+			]
+		}
 
-		def run_crawl(self):
-			self.q = urllib.parse.quote_plus(self.q)
-			self.framework.verbose('Searching the pubmed domain...')
+	def run_crawl(self):
+		self.framework.verbose('Searching the pubmed domain...')
 
-			url = f"https://pubmed.ncbi.nlm.nih.gov/?term={self.q}&size=200"
-			try:
-				req = self.framework.request(url=url)
-			except Exception as e:
-					self.framework.error(f"ConnectionError {e}.", 'util/pubmed', 'run_crawl')
-					self.framework.error('Pubmed is missed!', 'util/pubmed', 'run_crawl')
-					return
-			self._rawhtml += req.text
-			self._articles.extend(re.findall(r'<article .*?>(.*?)</article>', 
-						req.text, 
-						flags=re.DOTALL))
+		payload = {'term': self.q, 'size': 200}
+		try:
+			req = self.framework.request(
+					url=self.pubmed,
+					params=payload)
+		except Exception as e:
+			self.framework.error(f"ConnectionError {e}.", 'util/pubmed', 'run_crawl')
+			self.framework.error('Pubmed is missed!', 'util/pubmed', 'run_crawl')
+			return
 
-		@property
-		def raw(self):
-			return self._rawhtml
+		self._rawhtml += req.text
 
-		@property
-		def articles(self):
-			return self._articles
+	@property
+	def raw(self):
+		return self._rawhtml
 
-		@property
-		def links_with_data(self):
-			findlink = lambda x: list(map(lambda x: self.pubmed+x, 
-					re.findall(r'<a.*?class="docsum-title".*?href="(.*?)".*?>', x, flags=re.DOTALL)))
-			findauthors = lambda x: re.findall(r'<span class="docsum-authors full-authors">(.*?)</span>', 
-					x, flags=re.DOTALL)
-			findtitle = lambda x: list(map(lambda x: html.unescape(re.sub('</?b>','',x)).strip(),
-					re.findall(r'<a.*?class="docsum-title".*?>(.*?)</a>', x, flags=re.DOTALL)))
+	@property
+	def results(self):
+		parser = self.framework.page_parse(self._rawhtml)
+		results = parser.get_engine_results(self.xpaths, self.xpath_names)
 
-			for count,article in enumerate(self._articles):
-					if count==self.max:
-						break
-					self._links_with_data.append({'authors':findauthors(article)[0],
-							'title': findtitle(article)[0],
-							'link' : findlink(article)[0]
-							})
+		for count,article in enumerate(results):
+			if count == self.max:
+				break
+			self._results.append({
+				't': article['t'],
+				'a': self.pubmed + article['a'],
+				'c': article['c'],
+				'd': article['d'] if len(article['d']) > 0 else 'No abstract available'
+				})
 
-			return self._links_with_data
+		return self._results

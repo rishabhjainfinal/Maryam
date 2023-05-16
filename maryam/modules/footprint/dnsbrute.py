@@ -25,7 +25,7 @@ meta = {
 	'description': 'DNS brute force attack, supports concurrency.',
 	'comments': ('The wordlist option can be an url',),
 	'options': (
-		('domain', None, False, 'Domain name without https?://', '-d', 'store', str),
+		('domain', None, True, 'Domain name without https?://', '-d', 'store', str),
 		('count', None, False, 'Number of payloads len(max=count of payloads). default is max',
 							 '-c', 'store', int),
 		('wordlist', os.path.join(BASEDIR, 'data', 'dnsnames.txt'), False, 
@@ -126,5 +126,4 @@ def module_run(self):
 		self.alert('common DNS wordlists')
 		self.table(LISTS.items(), header=('list', 'scale'))
 		return
-	self.alert('hostname')
 	self.alert_results(module_api(self))
